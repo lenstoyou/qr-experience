@@ -10,6 +10,17 @@ export default {
    *
    * https://shopify.dev/docs/apps/webhooks/configuration/mandatory-webhooks#customers-data_request
    */
+  CUSTOMER_DATA_REQUEST: async (topic, shop, webhookRequestBody) => {
+    // look up all data for webhookRequestBody.customer.id and respond
+  },
+  CUSTOMER_REDACT: async (topic, shop, webhookRequestBody) => {
+    // delete or redact customer from your database
+  },
+  SHOP_REDACT: async (topic, shop, webhookRequestBody) => {
+    // clean up any shop‑level data you’ve stored
+  },
+
+
   CUSTOMERS_DATA_REQUEST: {
     deliveryMethod: DeliveryMethod.Http,
     callbackUrl: "/api/webhooks",

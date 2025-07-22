@@ -1,3 +1,9 @@
+[app]
+api_key = "9a3b40617c2ebb73f76cacadbae35512"
+api_secret_key = "48298e15cba786b12a89224213b86733"
+host = "https://f6c7a65234ab.ngrok-free.app"
+scopes = "read_products,write_products"
+
 client_id = "9a3b40617c2ebb73f76cacadbae35512"
 name = "Order QR AR Video"
 handle = "order-qr-ar-video-1"
@@ -11,17 +17,11 @@ automatically_update_urls_on_dev = true
 [webhooks]
 api_version = "2025-07"
 
-[[webhooks]]
-topic = "ORDERS_CREATE"
-path  = "/webhook/orders/create"
-
 [access_scopes]
-scopes = "read_products,write_products,read_orders"
+scopes = "read_products,write_products"
 
 [auth]
 redirect_urls = [
-  "https://f6c7a65234ab.ngrok-free.app/auth/callback",
-  "https://f6c7a65234ab.ngrok-free.app/auth/shopify/callback",
   "https://f6c7a65234ab.ngrok-free.app/api/auth/callback"
 ]
 

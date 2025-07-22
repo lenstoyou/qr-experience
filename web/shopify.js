@@ -1,3 +1,14 @@
+import { existsSync } from "fs";
+import { cwd } from "process";
+console.log("SHOPIFY.JS STARTED");
+console.log("Current working directory (shopify.js):", cwd());
+console.log("Does TOML exist at ./web/shopify.web.toml?", existsSync("./web/shopify.web.toml"));
+console.log("Does TOML exist at ./shopify.web.toml?", existsSync("./shopify.web.toml"));
+
+import 'dotenv/config';
+console.log("SHOPIFY_API_KEY (shopify.js):", process.env.SHOPIFY_API_KEY);
+console.log("SHOPIFY_API_SECRET_KEY (shopify.js):", process.env.SHOPIFY_API_SECRET_KEY);
+
 import { BillingInterval, LATEST_API_VERSION } from "@shopify/shopify-api";
 import { shopifyApp } from "@shopify/shopify-app-express";
 import { SQLiteSessionStorage } from "@shopify/shopify-app-session-storage-sqlite";
@@ -39,3 +50,4 @@ const shopify = shopifyApp({
 });
 
 export default shopify;
+console.log("Shopify keys:", Object.keys(shopify));

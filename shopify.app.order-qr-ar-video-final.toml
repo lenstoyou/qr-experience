@@ -1,0 +1,20 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "9a3b40617c2ebb73f76cacadbae35512"
+name = "Order QR AR Video - Final"
+handle = "order-qr-ar-video"
+application_url = "https://currency-eur-guns-pmid.trycloudflare.com"
+embedded = true
+
+[webhooks]
+api_version = "2025-07"
+
+[auth]
+redirect_urls = ["https://currency-eur-guns-pmid.trycloudflare.com/auth/callback", "https://currency-eur-guns-pmid.trycloudflare.com/auth/shopify/callback", "https://currency-eur-guns-pmid.trycloudflare.com/api/auth/callback"]
+
+[pos]
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = true
+include_config_on_deploy = true
