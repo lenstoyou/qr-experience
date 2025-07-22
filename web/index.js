@@ -1,24 +1,8 @@
 // web/index.js
 
-// --- DEBUG SECTION: VERY TOP ---
-import { existsSync } from "fs";
-import { cwd } from "process";
-console.log("INDEX.JS STARTED");
-console.log("CWD:", cwd());
-console.log("shopify.web.toml?", existsSync("./web/shopify.web.toml"));
-console.log("shopify.web.toml @ root?", existsSync("./shopify.web.toml"));
-import "dotenv/config";
-console.log("SHOPIFY_API_KEY:", process.env.SHOPIFY_API_KEY);
-console.log("SHOPIFY_API_SECRET_KEY:", process.env.SHOPIFY_API_SECRET_KEY);
-console.log("HOST:", process.env.HOST);
-console.log("MEDIA_BASE_URL:", process.env.MEDIA_BASE_URL);
-console.log("SCOPES:", process.env.SCOPES);
-console.log("SHOP:", process.env.SHOP);
-// --- END DEBUG SECTION ---
-
+import express from "express";
 import { join } from "path";
 import { readFileSync } from "fs";
-import express from "express";
 import serveStatic from "serve-static";
 import QRCode from "qrcode";
 import shopify from "./shopify.js";
@@ -27,7 +11,7 @@ import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 import filesUploadRouter from "./routes/files-upload.js";
 
-// Initialize SQLite and ensure orders table exists
+// Initialize SQLite and ensure the orders table exists
 const dbPromise = open({
   filename: "./orders.sqlite",
   driver: sqlite3.Database,
@@ -47,11 +31,11 @@ const MEDIA_BASE_URL = process.env.MEDIA_BASE_URL;
 const STATIC_PATH = join(process.cwd(), "web/frontend/dist");
 
 const app = express();
+
 app.use(express.json());
 
-// Log incoming requests
 app.use((req, res, next) => {
-  console.log("Incoming:", req.method, req.originalUrl, req.query);
+  console.log(`${req.method} ${req.originalUrl}`, req.query);
   next();
 });
 
@@ -67,42 +51,54 @@ app.post(
   shopify.processWebhooks({ webhookHandlers: PrivacyWebhookHandlers })
 );
 
-// Protect API routes
+// Protect all /api/* routes
 app.use("/api/*", shopify.validateAuthenticatedSession());
 
-// Mount file‑upload endpoint
+// File upload route
 app.use(filesUploadRouter);
 
-// Save video_url for an order
-app.post(
-  "/api/orders/:orderId/video",
-  shopify.validateAuthenticatedSession(),
-  async (req, res) => {
-    console.log("[Save Video] hit", req.params.orderId, req.body);
-    try {
-      const { orderId } = req.params;
-      const { videoUrl } = req.body;
-      if (!videoUrl) {
-        return res.status(400).json({ error: "Missing videoUrl" });
-      }
-      const db = await dbPromise;
-      await db.run(
-        `INSERT INTO orders (id, video_url) VALUES (?, ?)
-         ON CONFLICT(id) DO UPDATE SET video_url=excluded.video_url;`,
-        [orderId, videoUrl]
-      );
-      res.json({ success: true });
-    } catch (err) {
-      console.error("[Save Video] Error:", err);
-      res.status(500).json({ error: err.message });
-    }
-  }
-);
+// Save video URL manually for an order
+app.post("/api/orders/:orderId/video", async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { videoUrl } = req.body;
+    if (!videoUrl) return res.status(400).json({ error: "Missing videoUrl" });
 
-// Orders list for dashboard
+    const db = await dbPromise;
+    await db.run(
+      `INSERT INTO orders (id, video_url)
+       VALUES (?, ?)
+       ON CONFLICT(id) DO UPDATE SET video_url=excluded.video_url;`,
+      [orderId, videoUrl]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[Save Video] Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ ✅ ✅ ADDED: Fetch video URL for a specific order
+app.get("/api/orders/:orderId", async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const db = await dbPromise;
+    const row = await db.get("SELECT video_url FROM orders WHERE id = ?", orderId);
+    if (!row) return res.status(404).json({ error: "Order not found" });
+
+    res.json({ video_url: row.video_url });
+  } catch (err) {
+    console.error("[Get Order] Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Fetch recent orders and video URLs
 app.get("/api/orders", async (req, res) => {
   const shop = req.query.shop;
   if (!shop) return res.status(400).json({ error: "Missing shop" });
+
   try {
     const offlineId = shopify.api.session.getOfflineId(shop);
     const session = await shopify.config.sessionStorage.loadSession(offlineId);
@@ -132,26 +128,38 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
-// Webhook: generate QR for new orders
+// Generate QR image for dashboard
+app.get("/api/qr", async (req, res) => {
+  const { data } = req.query;
+  if (!data) return res.status(400).send("Missing data");
+  try {
+    const qrDataUrl = await QRCode.toDataURL(data);
+    res.json({ qrDataUrl });
+  } catch (err) {
+    res.status(500).send("QR Generation Error");
+  }
+});
+
+// Webhook: new order QR generation
 app.post("/webhook/orders/create", async (req, res) => {
   try {
     const order = req.body;
     const orderId = order.id.toString();
-    const phone =
-      (order.customer?.phone || "unknown").replace(/[^\d]/g, "") || "unknown";
+    const phone = (order.customer?.phone || "").replace(/[^\d]/g, "").slice(-10);
     const total = parseFloat(order.total_price);
     const file =
       total < 50 ? "small.mp4" : total < 200 ? "medium.mp4" : "large.mp4";
-
     const videoUrl = `${MEDIA_BASE_URL}/${file}`;
+
     const db = await dbPromise;
     await db.run(
-      `INSERT INTO orders (id, video_url) VALUES (?, ?)
+      `INSERT INTO orders (id, video_url)
+       VALUES (?, ?)
        ON CONFLICT(id) DO UPDATE SET video_url=excluded.video_url;`,
       [orderId, videoUrl]
     );
 
-    const link = `${HOST}/qr/${orderId}-${phone}`;
+    const link = `${HOST}/qr/${orderId}-${phone || "unknown"}`;
     const qrDataUrl = await QRCode.toDataURL(link);
     res.json({ qrDataUrl });
   } catch (err) {
@@ -160,25 +168,22 @@ app.post("/webhook/orders/create", async (req, res) => {
   }
 });
 
-// Redirect scanned QR to player
+// Serve the video via QR redirection
 app.get("/qr/:orderMobile", async (req, res) => {
   const [orderId] = req.params.orderMobile.split("-");
   const db = await dbPromise;
   const row = await db.get("SELECT video_url FROM orders WHERE id = ?", orderId);
   if (!row) return res.status(404).send("Order not found");
-  const target = `${HOST}/video-player.html?video=${encodeURIComponent(
-    row.video_url
-  )}`;
+
+  const target = `${HOST}/video-player.html?video=${encodeURIComponent(row.video_url)}`;
   res.redirect(302, target);
 });
 
-// Serve static build
+// Serve frontend assets
 app.use(serveStatic(STATIC_PATH, { index: false }));
 
-// Catch‑all for the React app
+// Fallback to SPA for embedded app routing
 app.use("/*", shopify.ensureInstalledOnShop(), (req, res) => {
-  const host = req.query.host;
-  if (!host) return res.status(400).send("No host provided");
   const html = readFileSync(join(STATIC_PATH, "index.html"), "utf8");
   res
     .status(200)
@@ -186,7 +191,7 @@ app.use("/*", shopify.ensureInstalledOnShop(), (req, res) => {
     .send(html.replace("%VITE_SHOPIFY_API_KEY%", process.env.SHOPIFY_API_KEY));
 });
 
-// Start on all interfaces so ngrok can connect
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+// Start the server
+app.listen(PORT, "0.0.0.0", () =>
+  console.log(`✅ Server listening on port ${PORT}`)
+);
