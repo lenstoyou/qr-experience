@@ -1,6 +1,6 @@
 // web/index.js
 
-// ── Catch any uncaught errors so they show up in Vercel logs ───────────────────
+// ── top‑level crash handlers so you’ll see errors in Vercel logs ───────────────
 process.on('unhandledRejection', (reason) => {
   console.error('[UNHANDLED REJECTION]', reason);
 });
@@ -20,13 +20,13 @@ import { open } from 'sqlite';
 import filesUploadRouter from './routes/files-upload.js';
 import { tmpdir } from 'os';
 
-// ── Use a writable path on Vercel; local path otherwise ────────────────────────
+// ── Use a writable DB on Vercel, fallback to local file when developing
 const isVercel = Boolean(process.env.VERCEL);
 const DB_PATH = isVercel
   ? join(tmpdir(), 'orders.sqlite')
   : join(process.cwd(), 'orders.sqlite');
 
-// ── Initialize SQLite and create the `orders` table if it doesn't exist ───────
+// ── Initialize SQLite + ensure table exists ──────────────────────────────────
 const dbPromise = open({
   filename: DB_PATH,
   driver: sqlite3.Database,
@@ -40,9 +40,8 @@ const dbPromise = open({
   return db;
 });
 
-// ── Env vars ───────────────────────────────────────────────────────────────────
-const HOST = process.env.HOST || '';               // e.g. "https://qr-experience.vercel.app"
-const MEDIA_BASE_URL = process.env.MEDIA_BASE_URL || '';
+const HOST = process.env.HOST;               // e.g. https://your-app.vercel.app
+const MEDIA_BASE_URL = process.env.MEDIA_BASE_URL;
 const STATIC_PATH = join(process.cwd(), 'web/frontend/dist');
 
 const app = express();
@@ -52,12 +51,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── HEALTH CHECK ───────────────────────────────────────────────────────────────
+// ── 1) Health‑check ───────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-// ── SHOPIFY AUTH & WEBHOOKS ────────────────────────────────────────────────────
+// ── 2) Shopify auth & webhooks ────────────────────────────────────────────────
 app.get(shopify.config.auth.path, shopify.auth.begin());
 app.get(
   shopify.config.auth.callbackPath,
@@ -69,21 +68,20 @@ app.post(
   shopify.processWebhooks({ webhookHandlers: PrivacyWebhookHandlers })
 );
 
-// ── PROTECT ALL /api/* ─────────────────────────────────────────────────────────
+// ── 3) Protect all /api/* endpoints ───────────────────────────────────────────
 app.use('/api/*', shopify.validateAuthenticatedSession());
 
-// ── FILE UPLOAD ROUTES ────────────────────────────────────────────────────────
+// ── 4) File uploads ───────────────────────────────────────────────────────────
 app.use(filesUploadRouter);
 
-// ── SAVE / UPDATE VIDEO URL ───────────────────────────────────────────────────
+// ── 5) Save or update video URL for an order ──────────────────────────────────
 app.post('/api/orders/:orderId/video', async (req, res) => {
   try {
-    const { orderId } = req.params;
-    const { videoUrl } = req.body;
+    const orderId = req.params.orderId;
+    const videoUrl = req.body.videoUrl;
     if (!videoUrl) {
       return res.status(400).json({ error: 'Missing videoUrl' });
     }
-
     const db = await dbPromise;
     await db.run(
       `INSERT INTO orders (id, video_url)
@@ -91,7 +89,6 @@ app.post('/api/orders/:orderId/video', async (req, res) => {
        ON CONFLICT(id) DO UPDATE SET video_url=excluded.video_url;`,
       [orderId, videoUrl]
     );
-
     res.json({ success: true });
   } catch (err) {
     console.error('[Save Video] Error:', err);
@@ -99,10 +96,10 @@ app.post('/api/orders/:orderId/video', async (req, res) => {
   }
 });
 
-// ── GET A SINGLE ORDER’S VIDEO URL ────────────────────────────────────────────
+// ── 6) Fetch a single order’s video URL ───────────────────────────────────────
 app.get('/api/orders/:orderId', async (req, res) => {
   try {
-    const { orderId } = req.params;
+    const orderId = req.params.orderId;
     const db = await dbPromise;
     const row = await db.get(
       'SELECT video_url FROM orders WHERE id = ?',
@@ -118,34 +115,31 @@ app.get('/api/orders/:orderId', async (req, res) => {
   }
 });
 
-// ── LIST RECENT ORDERS + VIDEO URL (via Shopify Admin API) ────────────────────
+// ── 7) List recent orders + video URLs via Admin API ─────────────────────────
 app.get('/api/orders', async (req, res) => {
   const shop = req.query.shop;
   if (!shop) {
     return res.status(400).json({ error: 'Missing shop' });
   }
-
   try {
     const offlineId = shopify.api.session.getOfflineId(shop);
     const session = await shopify.config.sessionStorage.loadSession(offlineId);
     if (!session) {
       return res.status(403).json({ error: 'No session' });
     }
-
     const client = new shopify.api.clients.Rest({ session });
     const { body } = await client.get({
       path: 'orders',
       query: { status: 'any', limit: 10 },
     });
-
     const db = await dbPromise;
     const enriched = await Promise.all(
-      body.orders.map(async (o) => {
+      body.orders.map(async (order) => {
         const row = await db.get(
           'SELECT video_url FROM orders WHERE id = ?',
-          o.id.toString()
+          String(order.id)
         );
-        return { ...o, video_url: row ? row.video_url : '' };
+        return { ...order, video_url: row ? row.video_url : '' };
       })
     );
     res.json(enriched);
@@ -155,14 +149,14 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
-// ── QR CODE FOR DASHBOARD PREVIEW ──────────────────────────────────────────────
+// ── 8) QR code for dashboard preview ──────────────────────────────────────────
 app.get('/api/qr', async (req, res) => {
   try {
     const data = req.query.data;
     if (!data) {
       return res.status(400).send('Missing data');
     }
-    const qrDataUrl = await QRCode.toDataURL(data.toString());
+    const qrDataUrl = await QRCode.toDataURL(String(data));
     res.json({ qrDataUrl });
   } catch (err) {
     console.error('[QR API] Error:', err);
@@ -170,17 +164,16 @@ app.get('/api/qr', async (req, res) => {
   }
 });
 
-// ── ORDERS_CREATE WEBHOOK: INSERT & RETURN QR ─────────────────────────────────
+// ── 9) ORDERS_CREATE webhook → store & return QR ──────────────────────────────
 app.post('/webhook/orders/create', async (req, res) => {
   try {
     const order = req.body;
-    const orderId = order.id.toString();
-    const phone = (order.customer?.phone || '')
-      .replace(/[^\d]/g, '')
-      .slice(-10);
+    const orderId = String(order.id);
+    const phone = order.customer && order.customer.phone
+      ? order.customer.phone.replace(/[^\d]/g, '').slice(-10)
+      : 'unknown';
     const total = parseFloat(order.total_price);
-    const file =
-      total < 50 ? 'small.mp4' : total < 200 ? 'medium.mp4' : 'large.mp4';
+    const file = total < 50 ? 'small.mp4' : total < 200 ? 'medium.mp4' : 'large.mp4';
     const videoUrl = `${MEDIA_BASE_URL}/${file}`;
 
     const db = await dbPromise;
@@ -191,7 +184,7 @@ app.post('/webhook/orders/create', async (req, res) => {
       [orderId, videoUrl]
     );
 
-    const link = `${HOST}/qr/${orderId}-${phone || 'unknown'}`;
+    const link = `${HOST}/qr/${orderId}-${phone}`;
     const qrDataUrl = await QRCode.toDataURL(link);
     res.json({ qrDataUrl });
   } catch (err) {
@@ -200,7 +193,7 @@ app.post('/webhook/orders/create', async (req, res) => {
   }
 });
 
-// ── QR REDIRECT TO VIDEO PLAYER ────────────────────────────────────────────────
+// ── 10) QR redirect to video player ────────────────────────────────────────────
 app.get('/qr/:orderMobile', async (req, res) => {
   try {
     const [orderId] = req.params.orderMobile.split('-');
@@ -222,15 +215,20 @@ app.get('/qr/:orderMobile', async (req, res) => {
   }
 });
 
-// ── STATIC ASSETS + SPA FALLBACK ──────────────────────────────────────────────
+// ── 11) Serve static frontend + SPA fallback ─────────────────────────────────
 app.use(serveStatic(STATIC_PATH, { index: false }));
 app.use('/*', shopify.ensureInstalledOnShop(), (_req, res) => {
   const html = readFileSync(join(STATIC_PATH, 'index.html'), 'utf8');
   res
     .status(200)
     .set('Content-Type', 'text/html')
-    .send(html.replace('%VITE_SHOPIFY_API_KEY%', process.env.SHOPIFY_API_KEY || ''));
+    .send(
+      html.replace(
+        '%VITE_SHOPIFY_API_KEY%',
+        process.env.SHOPIFY_API_KEY || ''
+      )
+    );
 });
 
-// ── Export the Express app; Vercel will handle listening ──────────────────────
+// ── Export for Vercel (no app.listen()) ───────────────────────────────────────
 export default app;
