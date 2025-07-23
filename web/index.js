@@ -192,6 +192,5 @@ app.use("/*", shopify.ensureInstalledOnShop(), (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, "0.0.0.0", () =>
-  console.log(`✅ Server listening on port ${PORT}`)
-);
+// DO NOT call app.listen() on Vercel
+export default app;
