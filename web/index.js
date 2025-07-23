@@ -1,11 +1,16 @@
-// Top‑level error handlers
-process.on('unhandledRejection', (reason) => {
-  console.error('[UNHANDLED REJECTION]', reason);
+// web/index.js
+
+// ——————————————————————————————————————————————————————————————————————————————————————
+// Top‑level crash logging
+process.on("unhandledRejection", (reason) => {
+  console.error("[UNHANDLED REJECTION]", reason);
 });
-process.on('uncaughtException', (err) => {
-  console.error('[UNCAUGHT EXCEPTION]', err);
+process.on("uncaughtException", (err) => {
+  console.error("[UNCAUGHT EXCEPTION]", err);
 });
 
+// ——————————————————————————————————————————————————————————————————————————————————————
+// Imports
 import express from "express";
 import { join } from "path";
 import { readFileSync } from "fs";
@@ -18,7 +23,8 @@ import { open } from "sqlite";
 import filesUploadRouter from "./routes/files-upload.js";
 import { tmpdir } from "os";
 
-// Use `/tmp` on Vercel (writable). Locally: ./orders.sqlite
+// ——————————————————————————————————————————————————————————————————————————————————————
+// Database (writable on Vercel in /tmp, local otherwise)
 const isVercel = Boolean(process.env.VERCEL);
 const DB_PATH = isVercel
   ? join(tmpdir(), "orders.sqlite")
@@ -37,12 +43,15 @@ const dbPromise = open({
   return db;
 });
 
-const HOST = process.env.HOST!;
+// ——————————————————————————————————————————————————————————————————————————————————————
+// Env & paths
+const HOST = process.env.HOST!;               // e.g. https://qr-experience.vercel.app
 const MEDIA_BASE_URL = process.env.MEDIA_BASE_URL!;
 const STATIC_PATH = join(process.cwd(), "web/frontend/dist");
 
+// ——————————————————————————————————————————————————————————————————————————————————————
+// Express app
 const app = express();
-
 app.use(express.json());
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.originalUrl}`, req.query);
@@ -54,30 +63,33 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-// Shopify auth & webhooks
+// — Shopify OAuth & Webhooks —
+// 1. Begin OAuth
 app.get(shopify.config.auth.path, shopify.auth.begin());
+// 2. OAuth callback
 app.get(
   shopify.config.auth.callbackPath,
   shopify.auth.callback(),
   shopify.redirectToShopifyOrAppRoot()
 );
+// 3. Inbound webhooks
 app.post(
   shopify.config.webhooks.path,
   shopify.processWebhooks({ webhookHandlers: PrivacyWebhookHandlers })
 );
 
-// Protect /api/*
+// Protect all /api/* routes
 app.use("/api/*", shopify.validateAuthenticatedSession());
 
-// File upload
+// File‑upload endpoints
 app.use(filesUploadRouter);
 
-// Save or update video URL
+// — Manual video‑URL save/update —
 app.post("/api/orders/:orderId/video", async (req, res) => {
   try {
     const { orderId } = req.params;
     const { videoUrl } = req.body;
-    if (!videoUrl) return res.status(400).json({ error: "Missing videoUrl" });
+    if (!videoUrl) throw new Error("Missing videoUrl");
 
     const db = await dbPromise;
     await db.run(
@@ -93,7 +105,7 @@ app.post("/api/orders/:orderId/video", async (req, res) => {
   }
 });
 
-// Fetch a specific order’s video URL
+// — Fetch single order URL —
 app.get("/api/orders/:orderId", async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -107,13 +119,13 @@ app.get("/api/orders/:orderId", async (req, res) => {
   }
 });
 
-// Fetch recent orders + video URLs via Shopify Admin API
+// — Fetch recent orders + saved URLs via Admin API —
 app.get("/api/orders", async (req, res) => {
-  const shop = req.query.shop;
+  const shop = req.query.shop as string;
   if (!shop) return res.status(400).json({ error: "Missing shop" });
 
   try {
-    const offlineId = shopify.api.session.getOfflineId(shop as string);
+    const offlineId = shopify.api.session.getOfflineId(shop);
     const session = await shopify.config.sessionStorage.loadSession(offlineId);
     if (!session) return res.status(403).json({ error: "No session" });
 
@@ -140,12 +152,12 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
-// Generate QR for dashboard preview
+// — Dashboard QR generator —
 app.get("/api/qr", async (req, res) => {
   try {
-    const { data } = req.query;
+    const data = req.query.data as string;
     if (!data) return res.status(400).send("Missing data");
-    const qrDataUrl = await QRCode.toDataURL(data as string);
+    const qrDataUrl = await QRCode.toDataURL(data);
     res.json({ qrDataUrl });
   } catch (err) {
     console.error("[QR API] Error:", err);
@@ -153,7 +165,7 @@ app.get("/api/qr", async (req, res) => {
   }
 });
 
-// Webhook: ORDERS_CREATE → insert & return QR
+// — Webhook: ORDERS_CREATE → save & return QR —
 app.post("/webhook/orders/create", async (req, res) => {
   try {
     const order = req.body as any;
@@ -183,17 +195,16 @@ app.post("/webhook/orders/create", async (req, res) => {
   }
 });
 
-// QR redirect to video player
+// — QR redirect to video player —
 app.get("/qr/:orderMobile", async (req, res) => {
   try {
-    const [orderId] = req.params.orderMobile.split("-");
+    const [orderId] = (req.params.orderMobile as string).split("-");
     const db = await dbPromise;
     const row = await db.get(
       "SELECT video_url FROM orders WHERE id = ?",
       orderId
     );
     if (!row) return res.status(404).send("Order not found");
-
     const target = `${HOST}/video-player.html?video=${encodeURIComponent(
       row.video_url
     )}`;
@@ -204,10 +215,10 @@ app.get("/qr/:orderMobile", async (req, res) => {
   }
 });
 
-// Serve static frontend assets
+// — Serve your Vite build —
 app.use(serveStatic(STATIC_PATH, { index: false }));
 
-// SPA fallback for embedded app routes
+// — SPA fallback for embedded app routes —
 app.use("/*", shopify.ensureInstalledOnShop(), (_req, res) => {
   const html = readFileSync(join(STATIC_PATH, "index.html"), "utf8");
   res
@@ -216,5 +227,6 @@ app.use("/*", shopify.ensureInstalledOnShop(), (_req, res) => {
     .send(html.replace("%VITE_SHOPIFY_API_KEY%", process.env.SHOPIFY_API_KEY!));
 });
 
-// Export for Vercel (no app.listen())
+// ——————————————————————————————————————————————————————————————————————————————————————
+// Export only the app (no app.listen()), so Vercel can mount it as a Serverless Function
 export default app;
