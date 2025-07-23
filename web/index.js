@@ -1,6 +1,6 @@
 // web/index.js
 
-// ── top‑level crash handlers so you’ll see errors in Vercel logs ───────────────
+// ── Top‑level crash handlers so you actually see errors in Vercel logs ─────────
 process.on('unhandledRejection', (reason) => {
   console.error('[UNHANDLED REJECTION]', reason);
 });
@@ -18,40 +18,55 @@ import PrivacyWebhookHandlers from './privacy.js';
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import filesUploadRouter from './routes/files-upload.js';
-import { tmpdir } from 'os';
+import os from 'os';
 
-// ── Use a writable DB on Vercel, fallback to local file when developing
+// ── Log startup & env ─────────────────────────────────────────────────────────
+console.log(
+  '🚀 Starting function',
+  'HOST=', process.env.HOST,
+  'MEDIA_BASE_URL=', process.env.MEDIA_BASE_URL,
+  'NODE_ENV=', process.env.NODE_ENV
+);
+
+// ── DB path: Vercel uses /tmp, locally use project folder ────────────────────
 const isVercel = Boolean(process.env.VERCEL);
 const DB_PATH = isVercel
-  ? join(tmpdir(), 'orders.sqlite')
+  ? join(os.tmpdir(), 'orders.sqlite')
   : join(process.cwd(), 'orders.sqlite');
 
 // ── Initialize SQLite + ensure table exists ──────────────────────────────────
 const dbPromise = open({
   filename: DB_PATH,
   driver: sqlite3.Database,
-}).then(async (db) => {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS orders (
-      id TEXT PRIMARY KEY,
-      video_url TEXT NOT NULL
-    );
-  `);
-  return db;
-});
+})
+  .then(async (db) => {
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id TEXT PRIMARY KEY,
+        video_url TEXT NOT NULL
+      );
+    `);
+    console.log('✅ SQLite ready at', DB_PATH);
+    return db;
+  })
+  .catch((err) => {
+    console.error('❌ SQLite init error:', err);
+    throw err;
+  });
 
-const HOST = process.env.HOST;               // e.g. https://your-app.vercel.app
-const MEDIA_BASE_URL = process.env.MEDIA_BASE_URL;
-const STATIC_PATH = join(process.cwd(), 'web/frontend/dist');
+// ── Load other envs & paths ──────────────────────────────────────────────────
+const HOST           = process.env.HOST           || '';
+const MEDIA_BASE_URL = process.env.MEDIA_BASE_URL || '';
+const STATIC_PATH    = join(process.cwd(), 'web/frontend/dist');
 
 const app = express();
 app.use(express.json());
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.originalUrl}`, req.query);
+  console.log('📥', req.method, req.originalUrl, req.query);
   next();
 });
 
-// ── 1) Health‑check ───────────────────────────────────────────────────────────
+// ── 1) Health check ───────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
@@ -68,16 +83,16 @@ app.post(
   shopify.processWebhooks({ webhookHandlers: PrivacyWebhookHandlers })
 );
 
-// ── 3) Protect all /api/* endpoints ───────────────────────────────────────────
+// ── 3) Protect /api/* ─────────────────────────────────────────────────────────
 app.use('/api/*', shopify.validateAuthenticatedSession());
 
 // ── 4) File uploads ───────────────────────────────────────────────────────────
 app.use(filesUploadRouter);
 
-// ── 5) Save or update video URL for an order ──────────────────────────────────
+// ── 5) Save/update video URL ─────────────────────────────────────────────────
 app.post('/api/orders/:orderId/video', async (req, res) => {
   try {
-    const orderId = req.params.orderId;
+    const { orderId } = req.params;
     const videoUrl = req.body.videoUrl;
     if (!videoUrl) {
       return res.status(400).json({ error: 'Missing videoUrl' });
@@ -96,10 +111,10 @@ app.post('/api/orders/:orderId/video', async (req, res) => {
   }
 });
 
-// ── 6) Fetch a single order’s video URL ───────────────────────────────────────
+// ── 6) Fetch one order’s video URL ────────────────────────────────────────────
 app.get('/api/orders/:orderId', async (req, res) => {
   try {
-    const orderId = req.params.orderId;
+    const { orderId } = req.params;
     const db = await dbPromise;
     const row = await db.get(
       'SELECT video_url FROM orders WHERE id = ?',
@@ -115,14 +130,14 @@ app.get('/api/orders/:orderId', async (req, res) => {
   }
 });
 
-// ── 7) List recent orders + video URLs via Admin API ─────────────────────────
+// ── 7) List recent orders + video URLs (via Admin API) ───────────────────────
 app.get('/api/orders', async (req, res) => {
   const shop = req.query.shop;
   if (!shop) {
     return res.status(400).json({ error: 'Missing shop' });
   }
   try {
-    const offlineId = shopify.api.session.getOfflineId(shop);
+    const offlineId = shopify.api.session.getOfflineId(String(shop));
     const session = await shopify.config.sessionStorage.loadSession(offlineId);
     if (!session) {
       return res.status(403).json({ error: 'No session' });
@@ -169,11 +184,15 @@ app.post('/webhook/orders/create', async (req, res) => {
   try {
     const order = req.body;
     const orderId = String(order.id);
-    const phone = order.customer && order.customer.phone
+    const phone = order.customer?.phone
       ? order.customer.phone.replace(/[^\d]/g, '').slice(-10)
       : 'unknown';
     const total = parseFloat(order.total_price);
-    const file = total < 50 ? 'small.mp4' : total < 200 ? 'medium.mp4' : 'large.mp4';
+    const file = total < 50
+      ? 'small.mp4'
+      : total < 200
+      ? 'medium.mp4'
+      : 'large.mp4';
     const videoUrl = `${MEDIA_BASE_URL}/${file}`;
 
     const db = await dbPromise;
@@ -193,7 +212,7 @@ app.post('/webhook/orders/create', async (req, res) => {
   }
 });
 
-// ── 10) QR redirect to video player ────────────────────────────────────────────
+// ── 10) QR redirect → video player ─────────────────────────────────────────────
 app.get('/qr/:orderMobile', async (req, res) => {
   try {
     const [orderId] = req.params.orderMobile.split('-');
@@ -205,9 +224,9 @@ app.get('/qr/:orderMobile', async (req, res) => {
     if (!row) {
       return res.status(404).send('Order not found');
     }
-    const target = `${HOST}/video-player.html?video=${encodeURIComponent(
-      row.video_url
-    )}`;
+    const target =
+      `${HOST}/video-player.html?video=` +
+      encodeURIComponent(row.video_url);
     res.redirect(302, target);
   } catch (err) {
     console.error('[QR Redirect] Error:', err);
@@ -215,7 +234,7 @@ app.get('/qr/:orderMobile', async (req, res) => {
   }
 });
 
-// ── 11) Serve static frontend + SPA fallback ─────────────────────────────────
+// ── 11) Static & SPA fallback ─────────────────────────────────────────────────
 app.use(serveStatic(STATIC_PATH, { index: false }));
 app.use('/*', shopify.ensureInstalledOnShop(), (_req, res) => {
   const html = readFileSync(join(STATIC_PATH, 'index.html'), 'utf8');
@@ -223,10 +242,7 @@ app.use('/*', shopify.ensureInstalledOnShop(), (_req, res) => {
     .status(200)
     .set('Content-Type', 'text/html')
     .send(
-      html.replace(
-        '%VITE_SHOPIFY_API_KEY%',
-        process.env.SHOPIFY_API_KEY || ''
-      )
+      html.replace('%VITE_SHOPIFY_API_KEY%', process.env.SHOPIFY_API_KEY || '')
     );
 });
 
