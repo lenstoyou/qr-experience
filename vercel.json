@@ -1,13 +1,23 @@
 {
   "version": 2,
   "builds": [
-    { "src": "web/index.js",              "use": "@vercel/node" },
+    { "src": "web/index.js", "use": "@vercel/node" },
     { "src": "web/frontend/package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
   ],
   "routes": [
-    { "src": "/api/(.*)",                 "dest": "web/index.js" },
-    { "src": "/auth/(.*)",                "dest": "web/index.js" },
+    // API routes (calls like /api/orders, /api/qr, etc)
+    { "src": "/api/(.*)", "dest": "web/index.js" },
+
+    // Auth routes (OAuth, Shopify install flow, etc)
+    { "src": "/auth/(.*)", "dest": "web/index.js" },
+
+    // Webhook routes (if you use /webhook/... endpoints)
+    { "src": "/webhook/(.*)", "dest": "web/index.js" },
+
+    // Let Vercel serve built static files from frontend (eg. assets, css, js)
     { "handle": "filesystem" },
-    { "src": "(.*)",                      "dest": "web/index.js" }
+
+    // Everything else goes to Express (for SPA routing or custom endpoints)
+    { "src": "(.*)", "dest": "web/index.js" }
   ]
 }
