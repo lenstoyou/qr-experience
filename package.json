@@ -21,9 +21,11 @@
     "@shopify/shopify-api": "^11.14.1",
     "@shopify/shopify-app-express": "^5.0.20",
     "@shopify/shopify-app-session-storage-sqlite": "^4.0.20",
+    "express": "^5.1.0",
     "multer": "^2.0.2",
     "qrcode": "^1.5.4",
     "react-qr-code": "^2.0.18",
+    "serve-static": "^2.2.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
   },
