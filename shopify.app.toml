@@ -8,12 +8,14 @@ embedded = true
 include_config_on_deploy = true
 automatically_update_urls_on_dev = true
 
-[webhooks]
-api_version = "2025-07"
-
 [[webhooks]]
 topic = "ORDERS_CREATE"
-path  = "/webhook/orders/create"
+path  = "/api/webhooks/orders_create"
+
+[[webhooks]]
+topic = "PRODUCTS_UPDATE"            # a different topic
+path  = "/api/webhooks/products_update"
+
 
 [access_scopes]
 scopes = "read_products,write_products,read_orders"
