@@ -1,5 +1,17 @@
 // web/index.js
 
+// At the top of web/index.js
+process.on('unhandledRejection', (reason) => {
+  console.error('[UNHANDLED REJECTION]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT EXCEPTION]', err);
+});
+
+import express from 'express';
+// … rest of your imports
+
+
 // Top‑level error handlers so you actually see the crash in the logs
 process.on('unhandledRejection', (reason) => {
   console.error('[UNHANDLED REJECTION]', reason);
@@ -196,6 +208,12 @@ app.use("/*", shopify.ensureInstalledOnShop(), (req, res) => {
     .set("Content-Type", "text/html")
     .send(html.replace("%VITE_SHOPIFY_API_KEY%", process.env.SHOPIFY_API_KEY!));
 });
+
+// Simple health‑check to prove Express is loading
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
 
 // *** IMPORTANT: export the app for Vercel, do NOT listen ***
 export default app;
