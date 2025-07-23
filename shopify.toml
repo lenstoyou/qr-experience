@@ -1,7 +1,7 @@
 client_id       = "9a3b40617c2ebb73f76cacadbae35512"
 name            = "Order QR AR Video"
 handle          = "order-qr-ar-video-1"
-application_url = "https://qr-experience-6rzrp84bp-rakesh-reddys-projects-522a9854.vercel.app"
+application_url = "https://qr-experience.vercel.app"
 embedded        = true
 
 [build]
@@ -25,9 +25,9 @@ scopes = "read_products,write_products,read_orders,read_webhooks,write_webhooks"
 
 [auth]
 redirect_urls = [
-  "https://qr-experience-6rzrp84bp-rakesh-reddys-projects-522a9854.vercel.app/auth/callback",
-  "https://qr-experience-6rzrp84bp-rakesh-reddys-projects-522a9854.vercel.app/auth/shopify/callback",
-  "https://qr-experience-6rzrp84bp-rakesh-reddys-projects-522a9854.vercel.app/api/auth/callback"
+  "https://qr-experience.vercel.app/auth/callback",
+  "https://qr-experience.vercel.app/auth/shopify/callback",
+  "https://qr-experience.vercel.app/api/auth/callback"
 ]
 
 [pos]

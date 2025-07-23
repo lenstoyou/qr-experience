@@ -191,6 +191,5 @@ app.use("/*", shopify.ensureInstalledOnShop(), (req, res) => {
     .send(html.replace("%VITE_SHOPIFY_API_KEY%", process.env.SHOPIFY_API_KEY));
 });
 
-// Start the server
 // DO NOT call app.listen() on Vercel
 export default app;

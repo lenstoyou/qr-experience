@@ -1,13 +1,13 @@
 [app]
 api_key = "9a3b40617c2ebb73f76cacadbae35512"
 api_secret_key = "48298e15cba786b12a89224213b86733"
-host = "https://f6c7a65234ab.ngrok-free.app
+host = "https://qr-experience.vercel.app"
 scopes = "read_products,write_products"
 
 client_id = "9a3b40617c2ebb73f76cacadbae35512"
 name = "Order QR AR Video"
 handle = "order-qr-ar-video-1"
-application_url = "https://f6c7a65234ab.ngrok-free.app"
+application_url = "https://qr-experience.vercel.app"
 embedded = true
 
 [build]
@@ -22,7 +22,7 @@ scopes = "read_products,write_products"
 
 [auth]
 redirect_urls = [
-  "https://f6c7a65234ab.ngrok-free.app/api/auth/callback"
+  "https://qr-experience.vercel.app/api/auth/callback"
 ]
 
 [pos]
