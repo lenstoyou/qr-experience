@@ -1,30 +1,32 @@
 client_id = "9a3b40617c2ebb73f76cacadbae35512"
 name = "Order QR AR Video"
 handle = "order-qr-ar-video-1"
-application_url = "https://f6c7a65234ab.ngrok-free.app"
+application_url = "https://qr-experience-9aghxomwj-rakesh-reddys-projects-522a9854.vercel.app"
 embedded = true
 
 [build]
 include_config_on_deploy = true
 automatically_update_urls_on_dev = true
 
-[[webhooks]]
+[webhooks]
+api_version = "2024-07"
+
+[[webhooks.subscriptions]]
 topic = "ORDERS_CREATE"
-path  = "/api/webhooks/orders_create"
+uri = "/api/webhooks/orders_create"
 
-[[webhooks]]
-topic = "PRODUCTS_UPDATE"            # a different topic
-path  = "/api/webhooks/products_update"
-
+[[webhooks.subscriptions]]
+topic = "PRODUCTS_UPDATE"
+uri = "/api/webhooks/products_update"
 
 [access_scopes]
 scopes = "read_products,write_products,read_orders"
 
 [auth]
 redirect_urls = [
-  "https://f6c7a65234ab.ngrok-free.app/auth/callback",
-  "https://f6c7a65234ab.ngrok-free.app/auth/shopify/callback",
-  "https://f6c7a65234ab.ngrok-free.app/api/auth/callback"
+  "https://qr-experience-9aghxomwj-rakesh-reddys-projects-522a9854.vercel.app/auth/callback",
+  "https://qr-experience-9aghxomwj-rakesh-reddys-projects-522a9854.vercel.app/auth/shopify/callback",
+  "https://qr-experience-9aghxomwj-rakesh-reddys-projects-522a9854.vercel.app/api/auth/callback"
 ]
 
 [pos]
