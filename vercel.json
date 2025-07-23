@@ -1,12 +1,14 @@
 {
   "version": 2,
   "builds": [
-    { "src": "web/index.js",               "use": "@vercel/node" },
-    { "src": "web/frontend/package.json",  "use": "@vercel/static-build", "config": { "distDir": "dist" } }
+    { "src": "web/index.js",               "use": "@vercel/node"  },
+    { "src": "web/frontend/dist/**/*",     "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/(.*)",                  "dest": "web/index.js" },
-    { "src": "/$",                         "dest": "web/frontend/dist/index.html" },
+    // 1) Serverless function for all API + auth + root paths
+    { "src": "/(api|auth|_next|\\?)?(.+)?", "dest": "web/index.js" },
+
+    // 2) Fallback to static assets for your front‑end dist folder 
     { "src": "/(.*)",                      "dest": "web/frontend/dist/$1" }
   ]
 }
