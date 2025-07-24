@@ -1,3 +1,4 @@
+cat > vercel.json << 'EOF'
 {
   "version": 2,
   "builds": [
@@ -5,16 +6,10 @@
     { "src": "web/frontend/dist/**",   "use": "@vercel/static" }
   ],
   "routes": [
-    // 1) any /api/* → your Express app
-    { "src": "/api/(.*)",       "dest": "/api/index.js" },
-
-    // 2) Shopify webhooks (POST /webhook/orders/create) also into Express
-    { "src": "/webhook/(.*)",   "dest": "/api/index.js" },
-
-    // 3) real static assets (any path with an extension) directly from dist
-    { "src": "/(.*\\..+)$",     "dest": "/web/frontend/dist/$1" },
-
-    // 4) EVERYTHING ELSE falls back to index.html
-    { "src": "/(.*)",           "dest": "/web/frontend/dist/index.html" }
+    { "src": "/api/(.*)",     "dest": "/api/index.js"                     },
+    { "src": "/webhook/(.*)", "dest": "/api/index.js"                     },
+    { "src": "/(.*\\..+)$",   "dest": "/web/frontend/dist/$1"            },
+    { "src": "/(.*)",         "dest": "/web/frontend/dist/index.html"     }
   ]
 }
+EOF
