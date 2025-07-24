@@ -9,8 +9,9 @@
     "qrcode": "^1.5.4",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
+    "multer": "^2.0.2",
     "@shopify/shopify-api": "^11.14.1",
     "@shopify/shopify-app-express": "^5.0.20",
-    "@shopify/app-bridge": "^3.7.10"
+    "@shopify/app": "^3.58.2"
   }
 }

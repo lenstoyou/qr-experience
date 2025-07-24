@@ -2,12 +2,19 @@
   "version": 2,
   "builds": [
     { "src": "web/index.js",              "use": "@vercel/node" },
-    { "src": "web/frontend/package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
+    {
+      "src": "web/frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    }
   ],
   "routes": [
-    { "src": "/api/(.*)",                 "dest": "web/index.js" },
-    { "src": "/auth/(.*)",                "dest": "web/index.js" },
+    // all /api/* hits your function
+    { "src": "/api/(.*)",  "dest": "web/index.js" },
+    { "src": "/auth/(.*)", "dest": "web/index.js" },
+    // fall through to filesystem for assets
     { "handle": "filesystem" },
-    { "src": "/(.*)",                     "dest": "web/index.js" }
+    // everything else back to your function (SPA + embedded Shopify)
+    { "src": "/(.*)",      "dest": "web/index.js" }
   ]
 }
