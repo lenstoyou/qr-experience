@@ -20,7 +20,7 @@ topics = ["products/update"]
 uri    = "/api/webhooks/products_update"
 
 [access_scopes]
-scopes = "read_products,write_products,read_orders"
+scopes = "read_products,write_products,read_orders,read_webhooks,write_webhooks"
 
 [auth]
 redirect_urls = [
