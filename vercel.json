@@ -1,13 +1,25 @@
 {
   "version": 2,
   "builds": [
-    { "src": "api/index.js",           "use": "@vercel/node"   },
-    { "src": "web/frontend/dist/**",   "use": "@vercel/static" }
+    { "src": "api/index.js",            "use": "@vercel/node"   },
+    { "src": "web/frontend/dist/**/*",  "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/(.*)",     "dest": "/api/index.js"                  },
-    { "src": "/webhook/(.*)", "dest": "/api/index.js"                  },
-    { "src": "/(.*\\..+)$",   "dest": "/web/frontend/dist/$1"         },
-    { "src": "/(.*)",         "dest": "/web/frontend/dist/index.html"  }
+    // ⎯⎯ Dynamic API endpoints
+    { "src": "/api/(.*)",     "dest": "/api/index.js" },
+    { "src": "/webhook/(.*)", "dest": "/api/index.js" },
+    { "src": "/qr/(.*)",      "dest": "/api/index.js" },
+
+    // ⎯⎯ Static assets (js/css/images/etc)
+    {
+      "src": "/(.*)\\.(js|css|png|jpg|svg|ico|json|map)$",
+      "dest": "/web/frontend/dist/$1.$2"
+    },
+
+    // ⎯⎯ Then let the filesystem serve any other file it finds…
+    { "handle": "filesystem" },
+
+    // ⎯⎯ …and finally our SPA fallback
+    { "src": "/(.*)", "dest": "/web/frontend/dist/index.html" }
   ]
 }
