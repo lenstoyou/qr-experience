@@ -5,12 +5,19 @@
     { "src": "web/frontend/dist/**/*", "use": "@vercel/static" }
   ],
   "routes": [
+    {
+      "src": "/apps/order-qr-ar-video(?:/(.*))?$",
+      "dest": "/web/frontend/dist/index.html"
+    },
+
     { "src": "/api/(.*)",     "dest": "/api/index.js" },
     { "src": "/webhook/(.*)", "dest": "/api/index.js" },
+
     {
       "src": "/(.*\\.(js|css|png|jpg|svg|ico|json))$",
       "dest": "/web/frontend/dist/$1"
     },
+
     { "src": "/.*", "dest": "/web/frontend/dist/index.html" }
   ]
 }
