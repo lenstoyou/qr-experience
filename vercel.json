@@ -5,21 +5,17 @@
     { "src": "web/frontend/dist/**/*",  "use": "@vercel/static" }
   ],
   "routes": [
-    // ⎯⎯ Dynamic API endpoints
-    { "src": "/api/(.*)",     "dest": "/api/index.js" },
-    { "src": "/webhook/(.*)", "dest": "/api/index.js" },
-    { "src": "/qr/(.*)",      "dest": "/api/index.js" },
+    { "src": "/api/(.*)",     "dest": "api/index.js" },
+    { "src": "/webhook/(.*)", "dest": "api/index.js" },
+    { "src": "/qr/(.*)",      "dest": "api/index.js" },
 
-    // ⎯⎯ Static assets (js/css/images/etc)
-    {
-      "src": "/(.*)\\.(js|css|png|jpg|svg|ico|json|map)$",
-      "dest": "/web/frontend/dist/$1.$2"
+    { 
+      "src": "/(.*\\.(js|css|png|jpg|svg|ico|json|map))", 
+      "dest": "/web/frontend/dist/$1" 
     },
 
-    // ⎯⎯ Then let the filesystem serve any other file it finds…
     { "handle": "filesystem" },
 
-    // ⎯⎯ …and finally our SPA fallback
     { "src": "/(.*)", "dest": "/web/frontend/dist/index.html" }
   ]
 }
