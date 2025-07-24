@@ -9,12 +9,9 @@
     }
   ],
   "routes": [
-    // all /api/* hits your function
     { "src": "/api/(.*)",  "dest": "web/index.js" },
     { "src": "/auth/(.*)", "dest": "web/index.js" },
-    // fall through to filesystem for assets
     { "handle": "filesystem" },
-    // everything else back to your function (SPA + embedded Shopify)
     { "src": "/(.*)",      "dest": "web/index.js" }
   ]
 }
