@@ -1,23 +1,13 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "api/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "web/frontend/dist/**/*",
-      "use": "@vercel/static"
-    }
+    { "src": "api/index.js",           "use": "@vercel/node" },
+    { "src": "web/frontend/dist/**/*", "use": "@vercel/static" }
   ],
   "routes": [
-    // all /api/* calls go to your Node function
-    { "src": "/api/(.*)", "dest": "/api/index.js" },
-
-    // static assets (css/js/images) get served directly
-    { "src": "/(.*)\\.(js|css|png|svg|ico)$", "dest": "/web/frontend/dist/$1.$2" },
-
-    // **fallback**: everything else returns index.html
-    { "src": "/(.*)", "dest": "/web/frontend/dist/index.html" }
+    { "src": "/api/(.*)",      "dest": "/api/index.js" },
+    { "src": "/webhook/(.*)",  "dest": "/api/webhook/$1.js" },
+    { "src": "/(.*)",          "dest": "/web/frontend/dist/$1" },
+    { "src": "/",              "dest": "/web/frontend/dist/index.html" }
   ]
 }
