@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "web/index.js",
+      "src": "api/**/*.js",
       "use": "@vercel/node"
     },
     {
@@ -12,9 +12,16 @@
     }
   ],
   "routes": [
-    { "src": "/api/(.*)",  "dest": "/web/index.js" },
-    { "src": "/auth/(.*)", "dest": "/web/index.js" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)",      "dest": "/web/index.js" }
+    {
+      "src": "/api/(.*)",
+      "dest": "api/$1.js"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "web/frontend/dist/index.html"
+    }
   ]
 }
