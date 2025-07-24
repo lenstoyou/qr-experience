@@ -1,13 +1,20 @@
 {
   "version": 2,
   "builds": [
-    { "src": "api/index.js",           "use": "@vercel/node" },
+    { "src": "api/index.js",           "use": "@vercel/node"   },
     { "src": "web/frontend/dist/**/*", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/api/(.*)",     "dest": "/api/index.js" },
     { "src": "/webhook/(.*)", "dest": "/api/index.js" },
-    { "src": "/(.*)",         "dest": "/web/frontend/dist/$1" },
-    { "src": "/",             "dest": "/web/frontend/dist/index.html" }
+
+    // first serve real static assets:
+    {
+      "src": "/(.*\\.(js|css|png|jpg|svg|ico|json))$",
+      "dest": "/web/frontend/dist/$1"
+    },
+
+    // everything else (Shopify admin/app routes, index, deep links) → SPA:
+    { "src": "/.*", "dest": "/web/frontend/dist/index.html" }
   ]
 }
