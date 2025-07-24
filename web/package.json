@@ -1,31 +1,14 @@
 {
-  "name": "order-qr-ar-video",
+  "name": "qr-server-function",
+  "private": true,
   "type": "module",
-  "version": "1.0.0",
-  "main": "web/index.js",
-  "scripts": {
-    "build": "shopify app build",
-    "start": "node web/index.js",
-    "dev": "shopify app dev"
-  },
   "dependencies": {
-    "@shopify/app": "^3.0.0",
-    "@shopify/app-bridge": "^3.7.10",
-    "@shopify/app-bridge-react": "^4.2.0",
-    "@shopify/cli": "^3.0.0",
-    "@shopify/polaris": "^13.9.5",
-    "@shopify/shopify-api": "^11.14.1",
-    "@shopify/shopify-app-express": "^5.0.20",
-    "@shopify/shopify-app-session-storage-sqlite": "^4.0.20",
     "express": "^5.1.0",
-    "multer": "^2.0.2",
-    "qrcode": "^1.5.4",
-    "react-qr-code": "^2.0.18",
     "serve-static": "^2.2.0",
+    "qrcode": "^1.5.4",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.10"
+    "sqlite3": "^5.1.7",
+    "@shopify/shopify-api": "^11.14.1",
+    "@shopify/shopify-app-express": "^5.0.20"
   }
 }
