@@ -5,8 +5,11 @@
     { "src": "web/frontend/dist/**/*", "use": "@vercel/static" }
   ],
   "routes": [
+    // Shopify REST endpoints
     { "src": "/api/(.*)",      "dest": "/api/index.js" },
-    { "src": "/webhook/(.*)",  "dest": "/api/webhook/$1.js" },
+    // Shopify webhooks
+    { "src": "/webhook/(.*)",  "dest": "/api/index.js" },
+    // Static assets + SPA fallback
     { "src": "/(.*)",          "dest": "/web/frontend/dist/$1" },
     { "src": "/",              "dest": "/web/frontend/dist/index.html" }
   ]
