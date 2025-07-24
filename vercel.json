@@ -1,20 +1,12 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "web/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "web/frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
-    }
+    { "src": "api/index.js",             "use": "@vercel/node" },
+    { "src": "web/frontend/package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "web/index.js" },
-    { "src": "/auth/(.*)", "dest": "web/index.js" },
+    { "src": "/api/(.*)",  "dest": "api/index.js" },
     { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "web/index.js" }
+    { "src": "/(.*)",      "dest": "/web/frontend/dist/$1" }
   ]
 }
