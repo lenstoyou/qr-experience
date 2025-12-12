@@ -15,7 +15,7 @@
     "@shopify/cli": "^3.0.0",
     "@shopify/polaris": "^13.9.5",
     "@shopify/shopify-api": "^11.14.1",
-    "@shopify/shopify-app-express": "^5.0.20",
+    "@shopify/shopify-app-express": "^6.0.4",
     "@shopify/shopify-app-session-storage-sqlite": "^4.0.20",
     "express": "^5.1.0",
     "multer": "^2.0.2",
